@@ -1,0 +1,6 @@
+@AuthSegura_HostAddress = http://localhost:5068
+
+GET {{AuthSegura_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

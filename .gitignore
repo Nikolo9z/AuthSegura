@@ -1,0 +1,73 @@
+# Ignore build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Dd]ist/
+[Dd]ebug/
+[Dd]ebug/
+[Dd]bin/
+
+# Ignore Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Ignore .NET Core files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# User-specific files
+.idea/
+.vscode/
+.vs/
+# Windows image file caches
+Thumbs.db
+Desktop.ini
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows Installer files
+*.pdb
+*.suo
+*.backup
+*.user
+*.dbmdl
+*.pptx
+*.psess
+*.orig
+*.xml
+*.~vsd
+*.zip
+*.sublime-project
+*.sublime-workspace
+*.exe
+*.avi
+*.mp4
+*.mov
+*.rar
+*.mdf
+*.ldf
+**/nuspec.list
+**/packages/
+**/.sass-cache/
+**/node_modules/
+**/bower_components/
+*/Performance/*TestResults.txt
+**/bin
+**/obj
+**/*.log.1
+**/*.log.*
+*.log
+*.db
+.vs/
+Publish/
+# Ignore Visual Studio Code workspace settings
+.vscode/
+appsettings.Development.json
+appsettings.json
+secrets.json
