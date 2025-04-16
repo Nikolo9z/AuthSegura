@@ -71,4 +71,4 @@ Publish/
 appsettings.Development.json
 appsettings.json
 secrets.json
-.Migrations/
+AuthSegura/Migrations/
