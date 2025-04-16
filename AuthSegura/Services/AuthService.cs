@@ -3,7 +3,6 @@ using AuthSegura.DTOs;
 using AuthSegura.Helpers;
 using AuthSegura.Models;
 using AuthSegura.Services.Interfaces;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuthSegura.Services

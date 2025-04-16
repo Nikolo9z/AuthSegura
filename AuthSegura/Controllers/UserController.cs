@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthSegura.Controllers
 {
+    [Route("[controller]")]
     public class UserController : Controller
     {
         private readonly IAuthService _authService;
