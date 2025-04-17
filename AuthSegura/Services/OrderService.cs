@@ -1,5 +1,6 @@
 using AuthSegura.DataAccess;
 using AuthSegura.Models;
+using Microsoft.EntityFrameworkCore;
 
 public class OrderService : IOrderService
 {
@@ -56,28 +57,61 @@ public class OrderService : IOrderService
             OrderItems = order.items.Select(item => new OrderItemResponse
             {
                 ProductId = item.ProductId,
-                Quantity = item.Quantity
+                Quantity = item.Quantity,
+                ProductName = productsDict[item.ProductId].Name,
+                Price = productsDict[item.ProductId].Price,
             }).ToList()
         };
     }
-    Task<bool> IOrderService.DeleteOrderAsync(int id)
+
+    async Task<OrderResponse[]> IOrderService.GetAllOrdersAsync()
     {
-        throw new NotImplementedException();
+        var orders = await  _dbContext.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .ToListAsync();
+        return orders.Select(o => new OrderResponse
+        {
+            Id = o.Id,
+            UserId = o.UserId,
+            UserName = o.User.Username,
+            OrderDate = o.OrderDate,
+            TotalAmount = o.TotalAmount,
+            OrderItems = o.OrderItems.Select(item => new OrderItemResponse
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductName = item.Product.Name,
+                Price = item.Product.Price,
+            }).ToList()
+        }).ToArray();
     }
 
-    Task<IEnumerable<Order>> IOrderService.GetAllOrdersAsync()
+    async Task<OrderResponse> IOrderService.GetOrderByIdAsync(int id)
     {
-        throw new NotImplementedException();
-    }
+        var order = await _dbContext.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .FirstOrDefaultAsync(o => o.Id == id)
+            ?? throw new KeyNotFoundException($"Order with ID {id} not found.");
+        return new OrderResponse
+        {
+            Id = order.Id,
+            UserId = order.UserId,
+            UserName = order.User.Username,
+            OrderDate = order.OrderDate,
+            TotalAmount = order.TotalAmount,
+            OrderItems = order.OrderItems.Select(item => new OrderItemResponse
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductName = item.Product.Name,
+                Price = item.Product.Price,
+            }).ToList()
+        };
 
-    Task<Order> IOrderService.GetOrderByIdAsync(int id)
-    {
-        throw new NotImplementedException();
-    }
-
-    Task<Order> IOrderService.UpdateOrderAsync(int id, Order order)
-    {
-        throw new NotImplementedException();
     }
     private async Task ValidateOrderRequestAsync(OrderRequest order)
     {
@@ -110,6 +144,78 @@ public class OrderService : IOrderService
     return total;
 }
 
+    public async Task<OrderResponse[]> GetOrdersByUser(int userId)
+    {
+        var orders = await _dbContext.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .Where(o => o.UserId == userId)
+            .ToListAsync();
+        return orders.Select(o => new OrderResponse
+        {
+            Id = o.Id,
+            UserId = o.UserId,
+            UserName = o.User.Username,
+            OrderDate = o.OrderDate,
+            TotalAmount = o.TotalAmount,
+            OrderItems = o.OrderItems.Select(item => new OrderItemResponse
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductName = item.Product.Name,
+                Price = item.Product.Price,
+            }).ToList()
+        }).ToArray();
+    }
 
+    public async Task<OrderResponse[]> GetFilterOrderByDate(DateTime startDate, DateTime endDate)
+    {
+        var orders = await _dbContext.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate)
+            .ToListAsync();
+        return orders.Select(o => new OrderResponse
+        {
+            Id = o.Id,
+            UserId = o.UserId,
+            UserName = o.User.Username,
+            OrderDate = o.OrderDate,
+            TotalAmount = o.TotalAmount,
+            OrderItems = o.OrderItems.Select(item => new OrderItemResponse
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductName = item.Product.Name,
+                Price = item.Product.Price,
+            }).ToList()
+        }).ToArray();
+    }
 
+    public async Task<OrderResponse[]> GetFilterOrderByUserByDate(int userId, DateTime startDate, DateTime endDate)
+    {
+        var orders = await _dbContext.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .Where(o => o.UserId == userId && o.OrderDate >= startDate && o.OrderDate <= endDate)
+            .ToListAsync();
+        return orders.Select(o => new OrderResponse
+        {
+            Id = o.Id,
+            UserId = o.UserId,
+            UserName = o.User.Username,
+            OrderDate = o.OrderDate,
+            TotalAmount = o.TotalAmount,
+            OrderItems = o.OrderItems.Select(item => new OrderItemResponse
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductName = item.Product.Name,
+                Price = item.Product.Price,
+            }).ToList()
+        }).ToArray();
+    }
 }

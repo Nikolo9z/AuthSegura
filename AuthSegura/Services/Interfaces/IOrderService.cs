@@ -1,8 +1,9 @@
 public interface IOrderService
 {
-    Task<Order> GetOrderByIdAsync(int id);
-    Task<IEnumerable<Order>> GetAllOrdersAsync();
+    Task<OrderResponse> GetOrderByIdAsync(int id);
+    Task<OrderResponse[]> GetAllOrdersAsync();
     Task<OrderResponse> CreateOrderAsync(OrderRequest order);
-    Task<Order> UpdateOrderAsync(int id, Order order);
-    Task<bool> DeleteOrderAsync(int id);
+    Task<OrderResponse[]> GetOrdersByUser(int userId);
+    Task<OrderResponse[]> GetFilterOrderByDate (DateTime startDate, DateTime endDate);
+    Task<OrderResponse[]> GetFilterOrderByUserByDate (int userId, DateTime startDate, DateTime endDate);
 }
