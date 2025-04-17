@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AuthSegura.DTOs.Products;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AuthSegura.Controllers
 {
@@ -21,6 +22,49 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.CreateProductAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpPut("update")]
+        public async Task<IActionResult> Update([FromBody] UpdateProductRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var response = await _productService.UpdateProductAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpGet("get/{id}")]
+        public async Task<IActionResult> Get(int id)
+        {
+            try
+            {
+                var response = await _productService.GetProductByIdAsync(id);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpGet("getall")]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var response = await _productService.GetAllProductsAsync();
                 return Ok(response);
             }
             catch (Exception ex)

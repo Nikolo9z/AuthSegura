@@ -21,7 +21,7 @@ public class OrderService : IOrderService
         var productsDict = new Dictionary<int, Product>();
         foreach (var item in order.items)
         {
-            var product = await _productService.GetProductByIdAsync(item.ProductId);
+            var product = await _dbContext.Products.FindAsync(item.ProductId) ?? throw new ArgumentException("Product not found", nameof(item.ProductId));
             if (!productsDict.ContainsKey(item.ProductId))
                 productsDict[item.ProductId] = product;
         }
@@ -111,5 +111,5 @@ public class OrderService : IOrderService
 }
 
 
-    
+
 }

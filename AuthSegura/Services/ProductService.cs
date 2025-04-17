@@ -1,5 +1,6 @@
-using System.Data.Entity;
 using AuthSegura.DataAccess;
+using AuthSegura.DTOs.Products;
+using Microsoft.EntityFrameworkCore;
 
 public class ProductService : IProductService
 {
@@ -40,36 +41,64 @@ public class ProductService : IProductService
         };
     }
 
-    public async Task<Product> GetProductByIdAsync(int id)
+    public async Task<GetProductByIdResponse> GetProductByIdAsync(int id)
     {
-        return await _dbContext.Products.FindAsync(id) ?? throw new KeyNotFoundException($"Product with ID {id} not found.");
+        var product = await _dbContext.Products.FindAsync(id) ?? throw new KeyNotFoundException($"Product with ID {id} not found.");
+        return new GetProductByIdResponse
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Price = product.Price,
+            Description = product.Description,
+            Stock = product.Stock,
+            ImageUrl = product.ImageUrl
+        };
+
     }
 
-    public async Task<IEnumerable<Product>> GetAllProductsAsync()
+    public async Task<GetAllProductsResponse[]> GetAllProductsAsync()
     {
-        return await _dbContext.Products.ToListAsync();
-    }
-    
-    public async Task<Product> UpdateProductAsync(int id, Product product)
-    {
-        var existingProduct = await GetProductByIdAsync(id);
-        if (existingProduct == null) throw new KeyNotFoundException($"Product with ID {id} not found.");
 
-        existingProduct.Name = product.Name;
-        existingProduct.Price = product.Price;
-        existingProduct.Description = product.Description;
-        existingProduct.Stock = product.Stock;
+        var products = await _dbContext.Products.ToListAsync();
+        return products.Select(p => new GetAllProductsResponse
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Price = p.Price,
+            Description = p.Description,
+            Stock = p.Stock,
+            ImageUrl = p.ImageUrl
+        }).ToArray();
+    }
+
+    public async Task<UpdateProductResponse> UpdateProductAsync(UpdateProductRequest request)
+    {
+        var existingProduct = await _dbContext.Products.FindAsync(request.Id)
+            ?? throw new KeyNotFoundException($"Product with ID {request.Id} not found.");
+        if (existingProduct == null) throw new KeyNotFoundException($"Product with ID {request.Id} not found.");
+        if (!string.IsNullOrEmpty(request.Name)) existingProduct.Name = request.Name;
+        if (request.Price > 0) existingProduct.Price = request.Price;
+        if (!string.IsNullOrEmpty(request.Description)) existingProduct.Description = request.Description;
+        if (request.Stock >= 0) existingProduct.Stock = request.Stock;
+        if (!string.IsNullOrEmpty(request.ImageUrl)) existingProduct.ImageUrl = request.ImageUrl;
         existingProduct.UpdatedAt = DateTime.UtcNow;
-        existingProduct.ImageUrl = product.ImageUrl;
+        _dbContext.Products.Update(existingProduct);
         await _dbContext.SaveChangesAsync();
-        return existingProduct;
+        return new UpdateProductResponse
+        {
+            Id = existingProduct.Id,
+            Name = existingProduct.Name,
+            Price = existingProduct.Price,
+            Description = existingProduct.Description,
+            Stock = existingProduct.Stock,
+            ImageUrl = existingProduct.ImageUrl
+        };
     }
 
     public async Task<bool> DeleteProductAsync(int id)
     {
-        var product = await GetProductByIdAsync(id);
+        var product = await _dbContext.Products.FindAsync(id);
         if (product == null) return false;
-
         _dbContext.Products.Remove(product);
         await _dbContext.SaveChangesAsync();
         return true;

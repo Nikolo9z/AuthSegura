@@ -1,8 +1,10 @@
+using AuthSegura.DTOs.Products;
+
 public interface IProductService
 {
-    Task<Product> GetProductByIdAsync(int id);
-    Task<IEnumerable<Product>> GetAllProductsAsync();
+    Task<GetProductByIdResponse> GetProductByIdAsync(int id);
+    Task<GetAllProductsResponse[]> GetAllProductsAsync();
     Task<CreateProductResponse> CreateProductAsync(CreateProductRequest product);
-    Task<Product> UpdateProductAsync(int id, Product product);
+    Task<UpdateProductResponse> UpdateProductAsync(UpdateProductRequest request);
     Task<bool> DeleteProductAsync(int id);
 }
