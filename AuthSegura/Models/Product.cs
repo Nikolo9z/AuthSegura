@@ -1,4 +1,5 @@
-using AuthSegura.DTOs.Products;
+
+using AuthSegura.Models;
 
 public class Product{
     public int Id { get; set; }
@@ -9,4 +10,6 @@ public class Product{
     public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public int CategoryId { get; set; }
+    public required Category Category { get; set; }
 }
