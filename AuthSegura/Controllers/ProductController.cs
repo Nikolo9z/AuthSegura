@@ -1,4 +1,5 @@
 ﻿using AuthSegura.DTOs.Products;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthSegura.Controllers
@@ -13,6 +14,7 @@ namespace AuthSegura.Controllers
         }
 
         [HttpPost("create")]
+        [Authorize]
         public async Task<IActionResult> Create([FromBody] CreateProductRequest request)
         {
             if (!ModelState.IsValid)
@@ -30,6 +32,7 @@ namespace AuthSegura.Controllers
             }
         }
         [HttpPut("update")]
+        [Authorize]
         public async Task<IActionResult> Update([FromBody] UpdateProductRequest request)
         {
             if (!ModelState.IsValid)

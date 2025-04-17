@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AuthSegura.Controllers
 {
+    [Authorize]
     [Route("[controller]")]
     public class OrderController : Controller
     {
