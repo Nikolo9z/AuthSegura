@@ -1,5 +1,6 @@
 using AuthSegura.DataAccess;
 using AuthSegura.DTOs.Products;
+using AuthSegura.Models;
 using Microsoft.EntityFrameworkCore;
 
 public class ProductService : IProductService
@@ -26,7 +27,9 @@ public class ProductService : IProductService
             Stock = product.Stock,
             ImageUrl = product.ImageUrl,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            CategoryId = product.CategoryId,
+            Category= await _dbContext.Categories.FindAsync(product.CategoryId) ?? throw new KeyNotFoundException($"Category with ID {product.CategoryId} not found.")
         };
         _dbContext.Products.Add(newProduct);
         await _dbContext.SaveChangesAsync();
@@ -37,7 +40,8 @@ public class ProductService : IProductService
             Price = newProduct.Price,
             Description = newProduct.Description,
             Stock = newProduct.Stock,
-            ImageUrl = newProduct.ImageUrl
+            ImageUrl = newProduct.ImageUrl,
+            Category = newProduct.Category.Name,
         };
     }
 
@@ -102,5 +106,67 @@ public class ProductService : IProductService
         _dbContext.Products.Remove(product);
         await _dbContext.SaveChangesAsync();
         return true;
+    }
+    public async Task<GetAllCategoriesResponse[]> GetAllCategoriesAsync()
+    {
+        var categories = await _dbContext.Categories.ToListAsync();
+        return categories.Select(c => new GetAllCategoriesResponse
+        {
+            Id = c.Id,
+            Name = c.Name
+        }).ToArray();
+    }
+    public async Task<GetAllProductsResponse[]> GetAllProductsByCategory(int categoryId)
+    {
+        var products = await _dbContext.Products
+            .Where(p => p.CategoryId == categoryId)
+            .ToListAsync();
+        return products.Select(p => new GetAllProductsResponse
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Price = p.Price,
+            Description = p.Description,
+            Stock = p.Stock,
+            ImageUrl = p.ImageUrl
+        }).ToArray();
+    }
+
+    public async Task<CategoryResponse> CreateCategory(string name)
+    {
+        var newCategory = new Category
+        {
+            Name = name,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _dbContext.Categories.Add(newCategory);
+        await _dbContext.SaveChangesAsync();
+        return new CategoryResponse
+        {
+            Id = newCategory.Id,
+            Name = newCategory.Name,
+            CreatedAt = newCategory.CreatedAt,
+            UpdatedAt = newCategory.UpdatedAt
+        };
+
+
+    }
+
+    public async Task<CategoryResponse> UpdateCategoryAsync(UpdateCategoryRequest request)
+    {
+        var category = await _dbContext.Categories.FindAsync(request.Id)
+            ?? throw new KeyNotFoundException($"Category with ID {request.Id} not found.");
+        category.UpdatedAt = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(request.Name)) category.Name = request.Name;
+        _dbContext.Categories.Update(category);
+        await _dbContext.SaveChangesAsync();
+        return new CategoryResponse
+        {
+            Id = category.Id,
+            Name = category.Name,
+            CreatedAt = category.CreatedAt,
+            UpdatedAt = category.UpdatedAt
+        };
     }
 }

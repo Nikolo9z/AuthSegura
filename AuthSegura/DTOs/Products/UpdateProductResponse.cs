@@ -9,5 +9,6 @@
         public int Stock { get; set; }
         public string ImageUrl { get; set; }
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public int Category { get; set; }
     }
 }

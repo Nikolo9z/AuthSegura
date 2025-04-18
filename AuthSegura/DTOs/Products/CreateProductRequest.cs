@@ -5,4 +5,5 @@ public class CreateProductRequest
     public required string Description { get; set; }
     public required int Stock { get; set; }
     public required string ImageUrl { get; set; }
+    public required int CategoryId { get; set; }
 }

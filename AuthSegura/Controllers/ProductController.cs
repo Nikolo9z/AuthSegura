@@ -75,5 +75,67 @@ namespace AuthSegura.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("getallbycategory/{categoryId}")]
+        public async Task<IActionResult> GetAllByCategory(int categoryId)
+        {
+            try
+            {
+                var response = await _productService.GetAllProductsByCategory(categoryId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpPost("category/create")]
+        [Authorize]
+        public async Task<IActionResult> CreateCategory([FromBody] string name)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var response = await _productService.CreateCategory(name);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpPut("category/update")]
+        [Authorize]
+        public async Task<IActionResult> UpdateCategory([FromBody] UpdateCategoryRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var response = await _productService.UpdateCategoryAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpGet("category/getall")]
+        public async Task<IActionResult> GetAllCategories()
+        {
+            try
+            {
+                var response = await _productService.GetAllCategoriesAsync();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
