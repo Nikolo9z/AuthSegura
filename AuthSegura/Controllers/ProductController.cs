@@ -90,7 +90,7 @@ namespace AuthSegura.Controllers
         }
         [HttpPost("category/create")]
         [Authorize]
-        public async Task<IActionResult> CreateCategory([FromBody] string name)
+        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -98,7 +98,8 @@ namespace AuthSegura.Controllers
             }
             try
             {
-                var response = await _productService.CreateCategory(name);
+
+                var response = await _productService.CreateCategory(request);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -130,6 +131,70 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.GetAllCategoriesAsync();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("category/{id}")]
+        public async Task<IActionResult> GetCategoryById(int id)
+        {
+            try
+            {
+                var response = await _productService.GetCategoryByIdAsync(id);
+                return Ok(response);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("category/root")]
+        public async Task<IActionResult> GetRootCategories()
+        {
+            try
+            {
+                var response = await _productService.GetRootCategoriesAsync();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("category/{id}/subcategories")]
+        public async Task<IActionResult> GetSubcategories(int id)
+        {
+            try
+            {
+                var response = await _productService.GetSubcategoriesAsync(id);
+                return Ok(response);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("getallbycategory/{categoryId}/{includeSubcategories?}")]
+        public async Task<IActionResult> GetAllByCategory(int categoryId, bool includeSubcategories = false)
+        {
+            try
+            {
+                var response = await _productService.GetAllProductsByCategory(categoryId, includeSubcategories);
                 return Ok(response);
             }
             catch (Exception ex)

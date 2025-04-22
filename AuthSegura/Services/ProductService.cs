@@ -107,15 +107,6 @@ public class ProductService : IProductService
         await _dbContext.SaveChangesAsync();
         return true;
     }
-    public async Task<GetAllCategoriesResponse[]> GetAllCategoriesAsync()
-    {
-        var categories = await _dbContext.Categories.ToListAsync();
-        return categories.Select(c => new GetAllCategoriesResponse
-        {
-            Id = c.Id,
-            Name = c.Name
-        }).ToArray();
-    }
     public async Task<GetAllProductsResponse[]> GetAllProductsByCategory(int categoryId)
     {
         var products = await _dbContext.Products
@@ -168,5 +159,191 @@ public class ProductService : IProductService
             CreatedAt = category.CreatedAt,
             UpdatedAt = category.UpdatedAt
         };
+    }
+
+    // Nuevo método para crear categoría con jerarquía
+    public async Task<CategoryResponse> CreateCategory(CreateCategoryRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Name))
+            throw new ArgumentException("Category name is required", nameof(request.Name));
+        
+        var newCategory = new Category
+        {
+            Name = request.Name,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            ParentCategoryId = request.ParentCategoryId
+        };
+        
+        // Verifica que la categoría padre exista si se proporciona
+        if (request.ParentCategoryId.HasValue)
+        {
+            var parentCategory = await _dbContext.Categories.FindAsync(request.ParentCategoryId)
+                ?? throw new KeyNotFoundException($"Parent category with ID {request.ParentCategoryId} not found");
+            newCategory.ParentCategory = parentCategory;
+        }
+        
+        _dbContext.Categories.Add(newCategory);
+        await _dbContext.SaveChangesAsync();
+        
+        return new CategoryResponse
+        {
+            Id = newCategory.Id,
+            Name = newCategory.Name,
+            CreatedAt = newCategory.CreatedAt,
+            UpdatedAt = newCategory.UpdatedAt,
+            ParentCategoryId = newCategory.ParentCategoryId,
+            ParentCategoryName = newCategory.ParentCategory?.Name
+        };
+    }
+
+    // Obtener todas las categorías planas
+    public async Task<GetAllCategoriesResponse[]> GetAllCategoriesFlatAsync()
+    {
+        var categories = await _dbContext.Categories
+            .Include(c => c.ParentCategory)
+            .Include(c => c.SubCategories)
+            .ToListAsync();
+            
+        return categories.Select(c => new GetAllCategoriesResponse
+        {
+            Id = c.Id,
+            Name = c.Name,
+            ParentCategoryId = c.ParentCategoryId,
+            ParentCategoryName = c.ParentCategory?.Name,
+            HasChildren = c.SubCategories.Any()
+        }).ToArray();
+    }
+
+    // Obtener todas las categorías en formato jerárquico
+    public async Task<GetAllCategoriesResponse[]> GetAllCategoriesAsync()
+    {
+        var allCategories = await GetAllCategoriesFlatAsync();
+        
+        // Devuelve solo las categorías de nivel superior para evitar redundancia
+        return allCategories.Where(c => c.ParentCategoryId == null).ToArray();
+    }
+
+    // Obtener una categoría por ID con sus subcategorías
+    public async Task<CategoryResponse> GetCategoryByIdAsync(int id)
+    {
+        var category = await _dbContext.Categories
+            .Include(c => c.ParentCategory)
+            .Include(c => c.SubCategories)
+            .FirstOrDefaultAsync(c => c.Id == id)
+            ?? throw new KeyNotFoundException($"Category with ID {id} not found");
+        
+        var response = new CategoryResponse
+        {
+            Id = category.Id,
+            Name = category.Name,
+            CreatedAt = category.CreatedAt,
+            UpdatedAt = category.UpdatedAt,
+            ParentCategoryId = category.ParentCategoryId,
+            ParentCategoryName = category.ParentCategory?.Name
+        };
+        
+        // Agregar subcategorías recursivamente
+        foreach (var subCategory in category.SubCategories)
+        {
+            var subCategoryResponse = await GetCategoryByIdAsync(subCategory.Id);
+            response.SubCategories.Add(subCategoryResponse);
+        }
+        
+        return response;
+    }
+
+    // Obtener subcategorías directas para una categoría
+    public async Task<CategoryResponse[]> GetSubcategoriesAsync(int categoryId)
+    {
+        var category = await _dbContext.Categories
+            .Include(c => c.SubCategories)
+            .FirstOrDefaultAsync(c => c.Id == categoryId)
+            ?? throw new KeyNotFoundException($"Category with ID {categoryId} not found");
+            
+        var result = new List<CategoryResponse>();
+        foreach (var subCategory in category.SubCategories)
+        {
+            result.Add(await GetCategoryByIdAsync(subCategory.Id));
+        }
+        
+        return result.ToArray();
+    }
+
+    // Obtener categorías raíz
+    public async Task<CategoryResponse[]> GetRootCategoriesAsync()
+    {
+        var rootCategories = await _dbContext.Categories
+            .Where(c => c.ParentCategoryId == null)
+            .ToListAsync();
+            
+        var result = new List<CategoryResponse>();
+        foreach (var category in rootCategories)
+        {
+            result.Add(await GetCategoryByIdAsync(category.Id));
+        }
+        
+        return result.ToArray();
+    }
+
+    // Obtener productos por categoría con opción para incluir subcategorías
+    public async Task<GetAllProductsResponse[]> GetAllProductsByCategory(int categoryId, bool includeSubcategories = false)
+    {
+        if (!includeSubcategories)
+        {
+            // Comportamiento existente: solo productos de esta categoría
+            var products = await _dbContext.Products
+                .Where(p => p.CategoryId == categoryId)
+                .ToListAsync();
+                
+            return products.Select(p => new GetAllProductsResponse
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Description = p.Description,
+                Stock = p.Stock,
+                ImageUrl = p.ImageUrl,
+                Category = categoryId
+            }).ToArray();
+        }
+        else
+        {
+            // Nueva funcionalidad: incluir productos de las subcategorías
+            var categoryIds = new HashSet<int> { categoryId };
+            await CollectSubcategoryIds(categoryId, categoryIds);
+            
+            var products = await _dbContext.Products
+                .Where(p => categoryIds.Contains(p.CategoryId))
+                .ToListAsync();
+                
+            return products.Select(p => new GetAllProductsResponse
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                Description = p.Description,
+                Stock = p.Stock,
+                ImageUrl = p.ImageUrl,
+                Category = p.CategoryId
+            }).ToArray();
+        }
+    }
+
+    // Método auxiliar para recopilar todos los IDs de subcategorías recursivamente
+    private async Task CollectSubcategoryIds(int categoryId, HashSet<int> categoryIds)
+    {
+        var subcategories = await _dbContext.Categories
+            .Where(c => c.ParentCategoryId == categoryId)
+            .Select(c => c.Id)
+            .ToListAsync();
+            
+        foreach (var subCategoryId in subcategories)
+        {
+            if (categoryIds.Add(subCategoryId))
+            {
+                await CollectSubcategoryIds(subCategoryId, categoryIds);
+            }
+        }
     }
 }

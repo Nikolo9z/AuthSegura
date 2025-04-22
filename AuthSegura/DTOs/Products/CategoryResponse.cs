@@ -6,5 +6,8 @@
         public string Name { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public int? ParentCategoryId { get; set; }
+        public string? ParentCategoryName { get; set; }
+        public List<CategoryResponse> SubCategories { get; set; } = new List<CategoryResponse>();
     }
 }
