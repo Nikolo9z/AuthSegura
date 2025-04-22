@@ -14,7 +14,7 @@ namespace AuthSegura.Controllers
         }
 
         [HttpPost("create")]
-        [Authorize]
+        [Authorize(Roles="admin")]
         public async Task<IActionResult> Create([FromBody] CreateProductRequest request)
         {
             if (!ModelState.IsValid)
