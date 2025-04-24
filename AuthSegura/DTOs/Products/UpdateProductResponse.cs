@@ -10,5 +10,9 @@
         public string ImageUrl { get; set; }
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public int Category { get; set; }
+        public decimal? DiscountPercentage { get; set; }
+        public DateTime? DiscountStartDate { get; set; }
+        public DateTime? DiscountEndDate { get; set; }
+        public decimal FinalPrice { get; set; }
     }
 }

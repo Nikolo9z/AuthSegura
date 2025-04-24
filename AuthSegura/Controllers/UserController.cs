@@ -39,8 +39,8 @@ namespace AuthSegura.Controllers
                     Expires = DateTime.UtcNow.AddHours(7),
 
                 };
-                Response.Cookies.Append("accessToken", response.AccessToken, accessTokenOptions);
-                Response.Cookies.Append("refreshToken", response.RefreshToken, refreshTokenOptions);
+                Response.Cookies.Append("accessToken", response.accessToken, accessTokenOptions);
+                Response.Cookies.Append("refreshToken", response.refreshToken, refreshTokenOptions);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -63,7 +63,7 @@ namespace AuthSegura.Controllers
                 {
                     HttpOnly = true,
                     Secure = true,
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddHours(1),
 
                 };
@@ -71,12 +71,12 @@ namespace AuthSegura.Controllers
                 {
                     HttpOnly = true,
                     Secure = true,
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddHours(7),
 
                 };
-                Response.Cookies.Append("accessToken", response.AccessToken, accessTokenOptions);
-                Response.Cookies.Append("refreshToken", response.RefreshToken, refreshTokenOptions);
+                Response.Cookies.Append("accessToken", response.accessToken, accessTokenOptions);
+                Response.Cookies.Append("refreshToken", response.refreshToken, refreshTokenOptions);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -111,6 +111,8 @@ namespace AuthSegura.Controllers
             try
             {
                 await _authService.LogoutAsync(refreshToken);
+                Response.Cookies.Delete("accessToken");
+                Response.Cookies.Delete("refreshToken");
                 return Ok("Logout successful");
             }
             catch (Exception ex)

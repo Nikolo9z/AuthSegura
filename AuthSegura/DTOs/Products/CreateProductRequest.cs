@@ -6,4 +6,7 @@ public class CreateProductRequest
     public required int Stock { get; set; }
     public required string ImageUrl { get; set; }
     public required int CategoryId { get; set; }
+    public decimal? DiscountPercentage { get; set; }
+    public DateTime? DiscountStartDate { get; set; }
+    public DateTime? DiscountEndDate { get; set; }
 }

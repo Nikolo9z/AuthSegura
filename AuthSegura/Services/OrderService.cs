@@ -14,18 +14,21 @@ public class OrderService : IOrderService
     }
 
     public async Task<OrderResponse> CreateOrderAsync(OrderRequest order)
-
     {
         await ValidateOrderRequestAsync(order);
         var user = await _dbContext.Users.FindAsync(order.userId) ?? throw new ArgumentException("User not found", nameof(order.userId));
-        var total = await CalculateTotalAsync(order.items);
         var productsDict = new Dictionary<int, Product>();
+        
+        // Cargamos todos los productos primero
         foreach (var item in order.items)
         {
             var product = await _dbContext.Products.FindAsync(item.ProductId) ?? throw new ArgumentException("Product not found", nameof(item.ProductId));
             if (!productsDict.ContainsKey(item.ProductId))
                 productsDict[item.ProductId] = product;
         }
+        
+        var total = await CalculateTotalAsync(order.items);
+        
         var newOrder = new Order
         {
             UserId = order.userId,
@@ -34,19 +37,30 @@ public class OrderService : IOrderService
             TotalAmount = total,
             OrderItems = new List<OrderItem>()
         };
+        
         _dbContext.Orders.Add(newOrder);
+        
         foreach (var item in order.items)
         {
+            var product = productsDict[item.ProductId];
+            var finalPrice = product.GetFinalPrice(); // Usa el método que calcula el precio con descuento
+            
             var orderItem = new OrderItem
             {
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 Order = newOrder,
-                Product = productsDict[item.ProductId]
+                Product = product,
+                UnitPrice = product.Price, // Precio original
+                DiscountedPrice = finalPrice, // Precio con descuento aplicado
+                DiscountPercentage = product.DiscountPercentage // Porcentaje de descuento aplicado (si existe)
             };
+            
             newOrder.OrderItems.Add(orderItem);
         }
+        
         await _dbContext.SaveChangesAsync();
+        
         return new OrderResponse
         {
             Id = newOrder.Id,
@@ -54,12 +68,14 @@ public class OrderService : IOrderService
             OrderDate = newOrder.OrderDate,
             TotalAmount = newOrder.TotalAmount,
             UserName = newOrder.User.Username,
-            OrderItems = order.items.Select(item => new OrderItemResponse
+            OrderItems = newOrder.OrderItems.Select(item => new OrderItemResponse
             {
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
-                ProductName = productsDict[item.ProductId].Name,
-                Price = productsDict[item.ProductId].Price,
+                ProductName = item.Product.Name,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage
             }).ToList()
         };
     }
@@ -134,12 +150,13 @@ public class OrderService : IOrderService
     }
     }
     private async Task<decimal> CalculateTotalAsync(List<OrderItemRequest> items)
-{
+    {
     decimal total = 0;
     foreach (var item in items)
     {
         var product = await _productService.GetProductByIdAsync(item.ProductId);
-        total += product.Price * item.Quantity;
+        // Usar el precio final que ya incluye el descuento si está activo
+        total += product.FinalPrice * item.Quantity;
     }
     return total;
 }

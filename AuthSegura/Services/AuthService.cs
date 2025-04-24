@@ -32,8 +32,11 @@ namespace AuthSegura.Services
             var accessToken = JwtHelper.GenerateJwtToken(user, _config["JwtSettings:Secret"]);
             return new AuthResponse
             {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token,
+                username = user.Username,
+                email = user.Email,
+                role = user.Role,
+                accessToken = accessToken,
+                refreshToken = refreshToken.Token
             };
         }
 
@@ -65,8 +68,11 @@ namespace AuthSegura.Services
             await _dbContext.SaveChangesAsync();
             return new AuthResponse
             {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken.Token,
+                username = user.Username,
+                email = user.Email,
+                role = user.Role,
+                accessToken = newAccessToken,
+                refreshToken = newRefreshToken.Token
             };
         }
 
@@ -105,8 +111,11 @@ namespace AuthSegura.Services
 
                 return new AuthResponse
                 {
-                    AccessToken = accessToken,
-                    RefreshToken = refreshToken.Token,
+                    username = user.Username,
+                    email = user.Email,
+                    role = user.Role,
+                    accessToken = accessToken,
+                    refreshToken = refreshToken.Token
                 };
             }
             catch (Exception ex)

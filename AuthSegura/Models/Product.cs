@@ -1,4 +1,3 @@
-
 using AuthSegura.Models;
 
 public class Product{
@@ -12,4 +11,19 @@ public class Product{
     public DateTime UpdatedAt { get; set; }
     public int CategoryId { get; set; }
     public Category Category { get; set; }
+    public decimal? DiscountPercentage { get; set; }
+    public DateTime? DiscountStartDate { get; set; }
+    public DateTime? DiscountEndDate { get; set; }
+
+    public decimal GetFinalPrice()
+    {
+        if (DiscountPercentage.HasValue && 
+            DiscountStartDate.HasValue && DiscountEndDate.HasValue &&
+            DateTime.UtcNow >= DiscountStartDate.Value && 
+            DateTime.UtcNow <= DiscountEndDate.Value)
+        {
+            return Price * (1 - (DiscountPercentage.Value / 100));
+        }
+        return Price;
+    }
 }
