@@ -127,7 +127,6 @@ public class OrderService : IOrderService
                 Price = item.Product.Price,
             }).ToList()
         };
-
     }
     private async Task ValidateOrderRequestAsync(OrderRequest order)
     {

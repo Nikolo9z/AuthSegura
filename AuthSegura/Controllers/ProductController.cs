@@ -1,4 +1,5 @@
 ﻿using AuthSegura.DTOs.Products;
+using AuthSegura.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,123 +20,152 @@ namespace AuthSegura.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
             }
             try
             {
                 var response = await _productService.CreateProductAsync(request);
-                return Ok(response);
+                return Ok(ApiResponse<CreateProductResponse>.Ok(response, "Producto creado exitosamente"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+
         [HttpPut("update")]
         [Authorize]
         public async Task<IActionResult> Update([FromBody] UpdateProductRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
             }
             try
             {
                 var response = await _productService.UpdateProductAsync(request);
-                return Ok(response);
+                return Ok(ApiResponse<UpdateProductResponse>.Ok(response, "Producto actualizado exitosamente"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+
         [HttpGet("get/{id}")]
         public async Task<IActionResult> Get(int id)
         {
             try
             {
                 var response = await _productService.GetProductByIdAsync(id);
-                return Ok(response);
+                return Ok(ApiResponse<GetProductByIdResponse>.Ok(response));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<object>.Fail(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+
         [HttpGet("getall")]
         public async Task<IActionResult> GetAll()
         {
             try
             {
                 var response = await _productService.GetAllProductsAsync();
-                return Ok(response);
+                return Ok(ApiResponse<GetAllProductsResponse[]>.Ok(response));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+
+        [HttpDelete("delete/{id}")]
+        [Authorize(Roles="admin")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var response = await _productService.DeleteProductAsync(id);
+                if (!response)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Producto no encontrado"));
+                }
+                return Ok(ApiResponse<bool>.Ok(response, "Producto eliminado exitosamente"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            }
+        }
+
         [HttpGet("getallbycategory/{categoryId}")]
         public async Task<IActionResult> GetAllByCategory(int categoryId)
         {
             try
             {
                 var response = await _productService.GetAllProductsByCategory(categoryId);
-                return Ok(response);
+                return Ok(ApiResponse<GetAllProductsResponse[]>.Ok(response));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+
         [HttpPost("category/create")]
         [Authorize]
         public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
             }
             try
             {
-
                 var response = await _productService.CreateCategory(request);
-                return Ok(response);
+                return Ok(ApiResponse<CategoryResponse>.Ok(response, "Categoría creada exitosamente"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+        
         [HttpPut("category/update")]
         [Authorize]
         public async Task<IActionResult> UpdateCategory([FromBody] UpdateCategoryRequest request)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
             }
             try
             {
                 var response = await _productService.UpdateCategoryAsync(request);
-                return Ok(response);
+                return Ok(ApiResponse<CategoryResponse>.Ok(response, "Categoría actualizada exitosamente"));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+        
         [HttpGet("category/getall")]
         public async Task<IActionResult> GetAllCategories()
         {
             try
             {
                 var response = await _productService.GetAllCategoriesAsync();
-                return Ok(response);
+                return Ok(ApiResponse<GetAllCategoriesResponse[]>.Ok(response));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
 
@@ -145,15 +175,15 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.GetCategoryByIdAsync(id);
-                return Ok(response);
+                return Ok(ApiResponse<CategoryResponse>.Ok(response));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(ApiResponse<object>.Fail(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
 
@@ -163,11 +193,11 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.GetRootCategoriesAsync();
-                return Ok(response);
+                return Ok(ApiResponse<CategoryResponse[]>.Ok(response));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
 
@@ -177,15 +207,15 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.GetSubcategoriesAsync(id);
-                return Ok(response);
+                return Ok(ApiResponse<CategoryResponse[]>.Ok(response));
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
+                return NotFound(ApiResponse<object>.Fail(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
 
@@ -195,11 +225,11 @@ namespace AuthSegura.Controllers
             try
             {
                 var response = await _productService.GetAllProductsByCategory(categoryId, includeSubcategories);
-                return Ok(response);
+                return Ok(ApiResponse<GetAllProductsResponse[]>.Ok(response));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
     }

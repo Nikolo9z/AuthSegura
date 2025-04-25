@@ -8,6 +8,7 @@
         public string Description { get; set; }
         public int Stock { get; set; }
         public string ImageUrl { get; set; }
+        public int CategoryId { get; set; }
         public decimal? DiscountPercentage { get; set; }
         public DateTime? DiscountStartDate { get; set; }
         public DateTime? DiscountEndDate { get; set; }

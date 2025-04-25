@@ -19,13 +19,13 @@ public class ProductService : IProductService
         if (string.IsNullOrEmpty(product.Name)) throw new ArgumentException("Product name is required", nameof(product.Name));
         if (product.Price <= 0) throw new ArgumentException("Product price must be greater than zero", nameof(product.Price));
         if (product.Stock < 0) throw new ArgumentException("Product stock cannot be negative", nameof(product.Stock));
-        
+
         // Validar el descuento si está presente
         if (product.DiscountPercentage.HasValue)
         {
             if (product.DiscountPercentage < 0 || product.DiscountPercentage > 100)
                 throw new ArgumentException("Discount percentage must be between 0 and 100", nameof(product.DiscountPercentage));
-                
+
             // Si hay descuento, las fechas son obligatorias
             if (!product.DiscountStartDate.HasValue)
                 throw new ArgumentException("Discount start date is required when discount is applied", nameof(product.DiscountStartDate));
@@ -34,7 +34,7 @@ public class ProductService : IProductService
             if (product.DiscountEndDate < product.DiscountStartDate)
                 throw new ArgumentException("Discount end date cannot be earlier than start date", nameof(product.DiscountEndDate));
         }
-        
+
         var newProduct = new Product
         {
             Name = product.Name,
@@ -52,7 +52,7 @@ public class ProductService : IProductService
         };
         _dbContext.Products.Add(newProduct);
         await _dbContext.SaveChangesAsync();
-        
+
         return new CreateProductResponse
         {
             Id = newProduct.Id,
@@ -84,10 +84,10 @@ public class ProductService : IProductService
             DiscountStartDate = product.DiscountStartDate,
             DiscountEndDate = product.DiscountEndDate,
             FinalPrice = product.GetFinalPrice(),
-            HasActiveDiscount = product.DiscountPercentage.HasValue && 
-                          product.DiscountStartDate.HasValue && 
+            HasActiveDiscount = product.DiscountPercentage.HasValue &&
+                          product.DiscountStartDate.HasValue &&
                           product.DiscountEndDate.HasValue &&
-                          DateTime.UtcNow >= product.DiscountStartDate.Value && 
+                          DateTime.UtcNow >= product.DiscountStartDate.Value &&
                           DateTime.UtcNow <= product.DiscountEndDate.Value
         };
 
@@ -96,7 +96,9 @@ public class ProductService : IProductService
     public async Task<GetAllProductsResponse[]> GetAllProductsAsync()
     {
 
-        var products = await _dbContext.Products.ToListAsync();
+        var products = await _dbContext.Products
+            .Include(p => p.Category)
+            .ToListAsync();
         return products.Select(p => new GetAllProductsResponse
         {
             Id = p.Id,
@@ -104,7 +106,16 @@ public class ProductService : IProductService
             Price = p.Price,
             Description = p.Description,
             Stock = p.Stock,
-            ImageUrl = p.ImageUrl
+            ImageUrl = p.ImageUrl,
+            Category = p.CategoryId,
+            CategoryName = p.Category.Name,
+            DiscountPercentage = p.DiscountPercentage,
+            finalPrice = p.GetFinalPrice(),
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt,
+            DiscountStartDate = p.DiscountStartDate,
+            DiscountEndDate = p.DiscountEndDate,
+            IsDiscountActive = p.IsDiscountActive()
         }).ToArray();
     }
 
@@ -112,32 +123,39 @@ public class ProductService : IProductService
     {
         var existingProduct = await _dbContext.Products.FindAsync(request.Id)
             ?? throw new KeyNotFoundException($"Product with ID {request.Id} not found.");
-        
+
         if (!string.IsNullOrEmpty(request.Name)) existingProduct.Name = request.Name;
         if (request.Price > 0) existingProduct.Price = request.Price;
         if (!string.IsNullOrEmpty(request.Description)) existingProduct.Description = request.Description;
         if (request.Stock >= 0) existingProduct.Stock = request.Stock;
         if (!string.IsNullOrEmpty(request.ImageUrl)) existingProduct.ImageUrl = request.ImageUrl;
-        
+        if (request.CategoryId > 0)
+        {
+            var category = await _dbContext.Categories.FindAsync(request.CategoryId)
+                ?? throw new KeyNotFoundException($"Category with ID {request.CategoryId} not found.");
+            existingProduct.CategoryId = request.CategoryId;
+            existingProduct.Category = category;
+        }
+
         // Actualizar información de descuento
         if (request.DiscountPercentage.HasValue)
         {
             if (request.DiscountPercentage < 0 || request.DiscountPercentage > 100)
                 throw new ArgumentException("Discount percentage must be between 0 and 100", nameof(request.DiscountPercentage));
-                
+
             existingProduct.DiscountPercentage = request.DiscountPercentage;
-            
+
             // Si hay descuento, las fechas son obligatorias
             if (request.DiscountStartDate.HasValue)
                 existingProduct.DiscountStartDate = request.DiscountStartDate;
             else if (!existingProduct.DiscountStartDate.HasValue)
                 throw new ArgumentException("Discount start date is required when discount is applied", nameof(request.DiscountStartDate));
-                
+
             if (request.DiscountEndDate.HasValue)
                 existingProduct.DiscountEndDate = request.DiscountEndDate;
             else if (!existingProduct.DiscountEndDate.HasValue)
                 throw new ArgumentException("Discount end date is required when discount is applied", nameof(request.DiscountEndDate));
-                
+
             if ((existingProduct.DiscountEndDate < existingProduct.DiscountStartDate))
                 throw new ArgumentException("Discount end date cannot be earlier than start date", nameof(request.DiscountEndDate));
         }
@@ -148,11 +166,11 @@ public class ProductService : IProductService
             existingProduct.DiscountStartDate = null;
             existingProduct.DiscountEndDate = null;
         }
-        
+
         existingProduct.UpdatedAt = DateTime.UtcNow;
         _dbContext.Products.Update(existingProduct);
         await _dbContext.SaveChangesAsync();
-        
+
         return new UpdateProductResponse
         {
             Id = existingProduct.Id,
@@ -164,7 +182,10 @@ public class ProductService : IProductService
             DiscountPercentage = existingProduct.DiscountPercentage,
             DiscountStartDate = existingProduct.DiscountStartDate,
             DiscountEndDate = existingProduct.DiscountEndDate,
-            FinalPrice = existingProduct.GetFinalPrice()
+            FinalPrice = existingProduct.GetFinalPrice(),
+            CategoryId= existingProduct.CategoryId,
+            CategoryName = existingProduct.Category.Name,
+
         };
     }
 
@@ -226,7 +247,7 @@ public class ProductService : IProductService
             Id = category.Id,
             Name = category.Name,
             CreatedAt = category.CreatedAt,
-            UpdatedAt = category.UpdatedAt
+            UpdatedAt = category.UpdatedAt,
         };
     }
 

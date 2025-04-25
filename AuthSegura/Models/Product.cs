@@ -17,13 +17,20 @@ public class Product{
 
     public decimal GetFinalPrice()
     {
-        if (DiscountPercentage.HasValue && 
+        if (DiscountPercentage.HasValue &&
             DiscountStartDate.HasValue && DiscountEndDate.HasValue &&
-            DateTime.UtcNow >= DiscountStartDate.Value && 
+            DateTime.UtcNow >= DiscountStartDate.Value &&
             DateTime.UtcNow <= DiscountEndDate.Value)
         {
             return Price * (1 - (DiscountPercentage.Value / 100));
         }
         return Price;
+    }
+    public bool IsDiscountActive()
+    {
+        return DiscountPercentage.HasValue &&
+               DiscountStartDate.HasValue && DiscountEndDate.HasValue &&
+               DateTime.UtcNow >= DiscountStartDate.Value &&
+               DateTime.UtcNow <= DiscountEndDate.Value;
     }
 }

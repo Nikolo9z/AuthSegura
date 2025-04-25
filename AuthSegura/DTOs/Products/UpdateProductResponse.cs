@@ -9,7 +9,8 @@
         public int Stock { get; set; }
         public string ImageUrl { get; set; }
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        public int Category { get; set; }
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; }
         public decimal? DiscountPercentage { get; set; }
         public DateTime? DiscountStartDate { get; set; }
         public DateTime? DiscountEndDate { get; set; }
