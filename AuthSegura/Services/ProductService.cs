@@ -34,7 +34,6 @@ public class ProductService : IProductService
             if (product.DiscountEndDate < product.DiscountStartDate)
                 throw new ArgumentException("Discount end date cannot be earlier than start date", nameof(product.DiscountEndDate));
         }
-
         var newProduct = new Product
         {
             Name = product.Name,
@@ -71,7 +70,9 @@ public class ProductService : IProductService
 
     public async Task<GetProductByIdResponse> GetProductByIdAsync(int id)
     {
-        var product = await _dbContext.Products.FindAsync(id) ?? throw new KeyNotFoundException($"Product with ID {id} not found.");
+        var product = await _dbContext.Products.Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id)
+            ?? throw new KeyNotFoundException($"Product with ID {id} not found.");
         return new GetProductByIdResponse
         {
             Id = product.Id,
@@ -84,11 +85,11 @@ public class ProductService : IProductService
             DiscountStartDate = product.DiscountStartDate,
             DiscountEndDate = product.DiscountEndDate,
             FinalPrice = product.GetFinalPrice(),
-            HasActiveDiscount = product.DiscountPercentage.HasValue &&
-                          product.DiscountStartDate.HasValue &&
-                          product.DiscountEndDate.HasValue &&
-                          DateTime.UtcNow >= product.DiscountStartDate.Value &&
-                          DateTime.UtcNow <= product.DiscountEndDate.Value
+            Category = product.CategoryId,
+            CategoryName= product.Category.Name,
+            CreatedAt = product.CreatedAt,
+            UpdatedAt = product.UpdatedAt,
+            HasActiveDiscount= product.IsDiscountActive()
         };
 
     }
@@ -98,6 +99,7 @@ public class ProductService : IProductService
 
         var products = await _dbContext.Products
             .Include(p => p.Category)
+            .OrderBy(p => p.Id)
             .ToListAsync();
         return products.Select(p => new GetAllProductsResponse
         {
@@ -137,8 +139,14 @@ public class ProductService : IProductService
             existingProduct.Category = category;
         }
 
-        // Actualizar información de descuento
-        if (request.DiscountPercentage.HasValue)
+        if (request.RemoveDiscount)
+        {
+            // Opcional: si se indica explícitamente eliminar el descuento
+            existingProduct.DiscountPercentage = null;
+            existingProduct.DiscountStartDate = null;
+            existingProduct.DiscountEndDate = null;
+        }
+        else if (request.DiscountPercentage.HasValue)
         {
             if (request.DiscountPercentage < 0 || request.DiscountPercentage > 100)
                 throw new ArgumentException("Discount percentage must be between 0 and 100", nameof(request.DiscountPercentage));
@@ -159,13 +167,7 @@ public class ProductService : IProductService
             if ((existingProduct.DiscountEndDate < existingProduct.DiscountStartDate))
                 throw new ArgumentException("Discount end date cannot be earlier than start date", nameof(request.DiscountEndDate));
         }
-        else if (request.RemoveDiscount)
-        {
-            // Opcional: si se indica explícitamente eliminar el descuento
-            existingProduct.DiscountPercentage = null;
-            existingProduct.DiscountStartDate = null;
-            existingProduct.DiscountEndDate = null;
-        }
+
 
         existingProduct.UpdatedAt = DateTime.UtcNow;
         _dbContext.Products.Update(existingProduct);
@@ -230,8 +232,6 @@ public class ProductService : IProductService
             CreatedAt = newCategory.CreatedAt,
             UpdatedAt = newCategory.UpdatedAt
         };
-
-
     }
 
     public async Task<CategoryResponse> UpdateCategoryAsync(UpdateCategoryRequest request)
@@ -394,7 +394,12 @@ public class ProductService : IProductService
                 Description = p.Description,
                 Stock = p.Stock,
                 ImageUrl = p.ImageUrl,
-                Category = categoryId
+                Category = categoryId,
+                finalPrice = p.GetFinalPrice(),
+                DiscountPercentage = p.DiscountPercentage,
+                DiscountStartDate = p.DiscountStartDate,
+                DiscountEndDate = p.DiscountEndDate,
+                IsDiscountActive = p.IsDiscountActive()
             }).ToArray();
         }
         else
@@ -418,6 +423,23 @@ public class ProductService : IProductService
                 Category = p.CategoryId
             }).ToArray();
         }
+    }
+    public async Task<bool> DeleteCategoryAsync(int id)
+    {
+        var category = await _dbContext.Categories.FindAsync(id);
+        if (category == null) return false;
+        var subcategories = await _dbContext.Categories
+            .Where(c => c.ParentCategoryId == id)
+            .ToListAsync();
+
+        foreach (var subcategory in subcategories)
+        {
+            _dbContext.Categories.Remove(subcategory);
+        }
+
+        _dbContext.Categories.Remove(category);
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 
     // Método auxiliar para recopilar todos los IDs de subcategorías recursivamente

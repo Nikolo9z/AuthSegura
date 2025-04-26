@@ -17,4 +17,5 @@ public interface IProductService
     Task<CategoryResponse> UpdateCategoryAsync(UpdateCategoryRequest request);
     Task<CategoryResponse[]> GetSubcategoriesAsync(int categoryId);
     Task<CategoryResponse[]> GetRootCategoriesAsync();
+    Task<bool> DeleteCategoryAsync(int id);
 }

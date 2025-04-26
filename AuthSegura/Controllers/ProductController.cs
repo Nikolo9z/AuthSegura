@@ -232,5 +232,23 @@ namespace AuthSegura.Controllers
                 return BadRequest(ApiResponse<object>.Fail(ex.Message));
             }
         }
+        [HttpDelete("category/delete/{id}")]
+        [Authorize(Roles="admin")]
+        public async Task<IActionResult> DeleteCategory(int id)
+        {
+            try
+            {
+                var response = await _productService.DeleteCategoryAsync(id);
+                if (!response)
+                {
+                    return NotFound(ApiResponse<object>.Fail("Categoría no encontrada"));
+                }
+                return Ok(ApiResponse<bool>.Ok(response, "Categoría eliminada exitosamente"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            }
+        }
     }
 }
