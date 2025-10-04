@@ -89,15 +89,41 @@ namespace AuthSegura.Controllers
         }
         
         [HttpPost("refresh")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshRequest request)
+        public async Task<IActionResult> RefreshToken()
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
-            }
             try
             {
+                // Intentar leer el refreshToken de la cookie
+                if (!Request.Cookies.TryGetValue("refreshToken", out string? refreshToken) || string.IsNullOrEmpty(refreshToken))
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Token de actualización no encontrado"));
+                }
+
+                // Crear el objeto de solicitud con el token obtenido de la cookie
+                var request = new RefreshRequest { refreshToken = refreshToken };
+                
                 var response = await _authService.RefreshTokenAsync(request);
+                
+                // Actualizar las cookies con los nuevos tokens
+                var accessTokenOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddHours(1),
+                };
+                
+                var refreshTokenOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddHours(7),
+                };
+                
+                Response.Cookies.Append("accessToken", response.accessToken, accessTokenOptions);
+                Response.Cookies.Append("refreshToken", response.refreshToken, refreshTokenOptions);
+                
                 return Ok(ApiResponse<AuthResponse>.Ok(response, "Token renovado exitosamente"));
             }
             catch (Exception ex)

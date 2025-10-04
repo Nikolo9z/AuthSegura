@@ -16,6 +16,6 @@
         public DateTime? DiscountStartDate { get; set; }
         public DateTime? DiscountEndDate { get; set; }
         public decimal FinalPrice { get; set; }
-        public bool HasActiveDiscount { get; set; }
+        public bool isDiscountActive { get; set; }
     }
 }

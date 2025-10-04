@@ -18,6 +18,7 @@ public class Product{
     public decimal GetFinalPrice()
     {
         if (DiscountPercentage.HasValue &&
+            DiscountPercentage.Value > 0 && // Añadir esta condición para verificar que sea mayor que cero
             DiscountStartDate.HasValue && DiscountEndDate.HasValue &&
             DateTime.UtcNow >= DiscountStartDate.Value &&
             DateTime.UtcNow <= DiscountEndDate.Value)
@@ -26,9 +27,11 @@ public class Product{
         }
         return Price;
     }
+    
     public bool IsDiscountActive()
     {
         return DiscountPercentage.HasValue &&
+               DiscountPercentage.Value > 0 && // Añadir esta condición para verificar que sea mayor que cero
                DiscountStartDate.HasValue && DiscountEndDate.HasValue &&
                DateTime.UtcNow >= DiscountStartDate.Value &&
                DateTime.UtcNow <= DiscountEndDate.Value;

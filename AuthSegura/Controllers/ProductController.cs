@@ -117,108 +117,6 @@ namespace AuthSegura.Controllers
             }
         }
 
-        [HttpPost("category/create")]
-        [Authorize]
-        public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
-            }
-            try
-            {
-                var response = await _productService.CreateCategory(request);
-                return Ok(ApiResponse<CategoryResponse>.Ok(response, "Categoría creada exitosamente"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-        
-        [HttpPut("category/update")]
-        [Authorize]
-        public async Task<IActionResult> UpdateCategory([FromBody] UpdateCategoryRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<object>.Fail("Datos de entrada inválidos"));
-            }
-            try
-            {
-                var response = await _productService.UpdateCategoryAsync(request);
-                return Ok(ApiResponse<CategoryResponse>.Ok(response, "Categoría actualizada exitosamente"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-        
-        [HttpGet("category/getall")]
-        public async Task<IActionResult> GetAllCategories()
-        {
-            try
-            {
-                var response = await _productService.GetAllCategoriesAsync();
-                return Ok(ApiResponse<GetAllCategoriesResponse[]>.Ok(response));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-
-        [HttpGet("category/{id}")]
-        public async Task<IActionResult> GetCategoryById(int id)
-        {
-            try
-            {
-                var response = await _productService.GetCategoryByIdAsync(id);
-                return Ok(ApiResponse<CategoryResponse>.Ok(response));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<object>.Fail(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-
-        [HttpGet("category/root")]
-        public async Task<IActionResult> GetRootCategories()
-        {
-            try
-            {
-                var response = await _productService.GetRootCategoriesAsync();
-                return Ok(ApiResponse<CategoryResponse[]>.Ok(response));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-
-        [HttpGet("category/{id}/subcategories")]
-        public async Task<IActionResult> GetSubcategories(int id)
-        {
-            try
-            {
-                var response = await _productService.GetSubcategoriesAsync(id);
-                return Ok(ApiResponse<CategoryResponse[]>.Ok(response));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<object>.Fail(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-
         [HttpGet("getallbycategory/{categoryId}/{includeSubcategories?}")]
         public async Task<IActionResult> GetAllByCategory(int categoryId, bool includeSubcategories = false)
         {
@@ -226,24 +124,6 @@ namespace AuthSegura.Controllers
             {
                 var response = await _productService.GetAllProductsByCategory(categoryId, includeSubcategories);
                 return Ok(ApiResponse<GetAllProductsResponse[]>.Ok(response));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<object>.Fail(ex.Message));
-            }
-        }
-        [HttpDelete("category/delete/{id}")]
-        [Authorize(Roles="admin")]
-        public async Task<IActionResult> DeleteCategory(int id)
-        {
-            try
-            {
-                var response = await _productService.DeleteCategoryAsync(id);
-                if (!response)
-                {
-                    return NotFound(ApiResponse<object>.Fail("Categoría no encontrada"));
-                }
-                return Ok(ApiResponse<bool>.Ok(response, "Categoría eliminada exitosamente"));
             }
             catch (Exception ex)
             {

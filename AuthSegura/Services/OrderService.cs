@@ -13,25 +13,31 @@ public class OrderService : IOrderService
         _productService = productService;
     }
 
-    public async Task<OrderResponse> CreateOrderAsync(OrderRequest order)
+    public async Task<OrderResponse> CreateOrderAsync(OrderItemRequest[] order, int userId)
     {
         await ValidateOrderRequestAsync(order);
-        var user = await _dbContext.Users.FindAsync(order.userId) ?? throw new ArgumentException("User not found", nameof(order.userId));
+        var user = await _dbContext.Users.FindAsync(userId) ?? throw new ArgumentException("User not found", nameof(userId));
         var productsDict = new Dictionary<int, Product>();
         
         // Cargamos todos los productos primero
-        foreach (var item in order.items)
+        foreach (var item in order)
         {
-            var product = await _dbContext.Products.FindAsync(item.ProductId) ?? throw new ArgumentException("Product not found", nameof(item.ProductId));
+            var product = await _dbContext.Products.Include(p => p.Category)
+                .FirstOrDefaultAsync(p => p.Id == item.ProductId) ?? throw new ArgumentException($"Product with ID {item.ProductId} not found", nameof(item.ProductId));
+            
+            // Verificar si hay suficiente stock disponible
+            if (product.Stock < item.Quantity)
+                throw new InvalidOperationException($"No hay suficiente stock disponible para el producto {product.Name}. Stock disponible: {product.Stock}");
+                
             if (!productsDict.ContainsKey(item.ProductId))
                 productsDict[item.ProductId] = product;
         }
         
-        var total = await CalculateTotalAsync(order.items);
+        var total = await CalculateTotalAsync(order);
         
         var newOrder = new Order
         {
-            UserId = order.userId,
+            UserId = userId,
             User = user,
             OrderDate = DateTime.UtcNow,
             TotalAmount = total,
@@ -40,7 +46,7 @@ public class OrderService : IOrderService
         
         _dbContext.Orders.Add(newOrder);
         
-        foreach (var item in order.items)
+        foreach (var item in order)
         {
             var product = productsDict[item.ProductId];
             var finalPrice = product.GetFinalPrice(); // Usa el método que calcula el precio con descuento
@@ -51,10 +57,24 @@ public class OrderService : IOrderService
                 Quantity = item.Quantity,
                 Order = newOrder,
                 Product = product,
-                UnitPrice = product.Price, // Precio original
-                DiscountedPrice = finalPrice, // Precio con descuento aplicado
-                DiscountPercentage = product.DiscountPercentage // Porcentaje de descuento aplicado (si existe)
+                UnitPrice = product.Price // Precio original
             };
+            
+            // Verificar si hay un descuento válido y aplicarlo
+            if (product.IsDiscountActive())
+            {
+                orderItem.DiscountedPrice = finalPrice; // Precio con descuento aplicado
+                orderItem.DiscountPercentage = product.DiscountPercentage; // Porcentaje de descuento aplicado
+            }
+            else
+            {
+                orderItem.DiscountedPrice = product.Price; // Sin descuento, precio normal
+                orderItem.DiscountPercentage = null; // Sin descuento
+            }
+            
+            // Actualizar el stock del producto
+            product.Stock -= item.Quantity;
+            _dbContext.Products.Update(product);
             
             newOrder.OrderItems.Add(orderItem);
         }
@@ -74,6 +94,10 @@ public class OrderService : IOrderService
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
                 Price = item.UnitPrice,
+                CategoryId =item.Product.Category.Id,
+                Category= item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl,
                 DiscountedPrice = item.DiscountedPrice,
                 DiscountPercentage = item.DiscountPercentage
             }).ToList()
@@ -99,7 +123,13 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
-                Price = item.Product.Price,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage,
+                CategoryId = item.Product.Category.Id,
+                Category = item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl
             }).ToList()
         }).ToArray();
     }
@@ -110,6 +140,7 @@ public class OrderService : IOrderService
             .Include(o => o.User)
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.Category)
             .FirstOrDefaultAsync(o => o.Id == id)
             ?? throw new KeyNotFoundException($"Order with ID {id} not found.");
         return new OrderResponse
@@ -124,22 +155,24 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
-                Price = item.Product.Price,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage,
+                CategoryId = item.Product.Category.Id,
+                Category = item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl
             }).ToList()
         };
     }
-    private async Task ValidateOrderRequestAsync(OrderRequest order)
+    private async Task ValidateOrderRequestAsync(OrderItemRequest[] order)
     {
     if (order == null)
         throw new ArgumentNullException(nameof(order));
-    if (order.userId <= 0)
-        throw new ArgumentException("User ID must be greater than zero", nameof(order.userId));
-    if (string.IsNullOrWhiteSpace(order.userId.ToString()))
-        throw new ArgumentException("User ID is required", nameof(order.userId));
-    if (order.items == null || order.items.Count == 0)
-        throw new ArgumentException("Order items are required", nameof(order.items));
+    if (order.Length == 0)
+        throw new ArgumentException("Order cannot be empty", nameof(order));
 
-    foreach (var item in order.items)
+    foreach (var item in order)
     {
         var product = await _productService.GetProductByIdAsync(item.ProductId);
         if (product == null)
@@ -148,7 +181,7 @@ public class OrderService : IOrderService
             throw new ArgumentException("Quantity must be greater than zero");
     }
     }
-    private async Task<decimal> CalculateTotalAsync(List<OrderItemRequest> items)
+    private async Task<decimal> CalculateTotalAsync(OrderItemRequest[] items)
     {
     decimal total = 0;
     foreach (var item in items)
@@ -166,6 +199,7 @@ public class OrderService : IOrderService
             .Include(o => o.User)
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.Category)
             .Where(o => o.UserId == userId)
             .ToListAsync();
         return orders.Select(o => new OrderResponse
@@ -180,7 +214,13 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
-                Price = item.Product.Price,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage,
+                CategoryId = item.Product.Category.Id,
+                Category = item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl
             }).ToList()
         }).ToArray();
     }
@@ -191,6 +231,7 @@ public class OrderService : IOrderService
             .Include(o => o.User)
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.Category)
             .Where(o => o.OrderDate >= startDate && o.OrderDate <= endDate)
             .ToListAsync();
         return orders.Select(o => new OrderResponse
@@ -205,7 +246,13 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
-                Price = item.Product.Price,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage,
+                CategoryId = item.Product.Category.Id,
+                Category = item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl
             }).ToList()
         }).ToArray();
     }
@@ -216,6 +263,7 @@ public class OrderService : IOrderService
             .Include(o => o.User)
             .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
+                .ThenInclude(p => p.Category)
             .Where(o => o.UserId == userId && o.OrderDate >= startDate && o.OrderDate <= endDate)
             .ToListAsync();
         return orders.Select(o => new OrderResponse
@@ -230,7 +278,14 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 ProductName = item.Product.Name,
-                Price = item.Product.Price,
+                Price = item.UnitPrice,
+                DiscountedPrice = item.DiscountedPrice,
+                DiscountPercentage = item.DiscountPercentage,
+                CategoryId = item.Product.Category.Id,
+                Category = item.Product.Category.Name,
+                ProductDescription = item.Product.Description,
+                ProductImage = item.Product.ImageUrl
+
             }).ToList()
         }).ToArray();
     }
